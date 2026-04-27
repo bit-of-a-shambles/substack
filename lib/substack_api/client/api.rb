@@ -192,6 +192,7 @@ module Substack
 
           if @session && @session['substack.sid']
             f.headers['Cookie'] = "substack.sid=#{@session['substack.sid']}"
+            f.headers['Cookie'] += "; csrf-token=#{@session['csrf-token']}" if @session['csrf-token']
           end
         end
       end

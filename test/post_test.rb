@@ -147,7 +147,7 @@ class PostTest < Minitest::Test
   end
 
   def test_subscribe_with_caption
-    @post.subscribe_with_caption(message: 'Custom subscription message')
+    @post.subscribe_with_caption
     content = @post.draft_body[:content]
     
     assert_equal 1, content.length
