@@ -181,13 +181,10 @@ module Substack
       last_item[:attrs][:videoId] = video_id
     end
 
-    # Add a subscription widget with a caption
+    # Add a subscription widget
     #
-    # @param message [String, nil] The caption message
     # @return [void]
-    def subscribe_with_caption(message: nil)
-      # The message parameter is not actually used in the current implementation
-      # as the caption is added in the front-end by Substack
+    def subscribe_with_caption
       add(
         type: "subscribeWidget",
         attrs: { url: "%%checkout_url%%", text: "Subscribe", language: "en" }

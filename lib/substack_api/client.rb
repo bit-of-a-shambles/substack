@@ -2,14 +2,6 @@
 
 require "selenium-webdriver"
 require "json"
-require "date"
-require "net/http"
-require "uri"
-require "active_support"
-require "active_support/core_ext/date"
-require "active_support/core_ext/time"
-require "zlib"
-require "stringio"
 require "logger"
 require "faraday"
 
@@ -67,7 +59,7 @@ module Substack
       @base_url = base_url || "https://substack.com/api/v1"
       @cookies_path = cookies_path
       @session = {}
-      @publication_url = publication_url || "https://interessant3.substack.com"
+      @publication_url = publication_url
       @logger = Logger.new($stdout)
       @logger.level = debug ? Logger::DEBUG : Logger::WARN
 
@@ -86,7 +78,7 @@ module Substack
         raise ArgumentError, "Provide either cookies_path or email and password for authentication."
       end
 
-      @publication_url ||= determine_primary_publication
+      @publication_url ||= determine_primary_publication_url
     end
 
     # Get the current user's ID
@@ -167,144 +159,6 @@ module Substack
           raise
         end
       end
-    end
-    
-    # Process a GET request to the specified URI
-    #
-    # @param uri [URI] The URI to send the request to
-    # @param name [String, nil] Optional name for debugging purposes
-    # @return [Net::HTTPResponse] The HTTP response
-    def get_request(uri, name = nil)
-      @logger.debug "Initializing GET request for #{name || uri}"
-      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
-        request = Net::HTTP::Get.new(uri)
-        request["User-Agent"] = "ruby-requests/1.0"
-        request["Accept-Encoding"] = "gzip, deflate"
-        request["Content-Type"] = "application/json"
-        request["Accept"] = "*/*"
-        request["Connection"] = "keep-alive"
-        add_cookies(request)
-
-        @logger.debug "GET Request URI: #{uri}"
-        
-        response = http.request(request)
-        @logger.debug "Response Code: #{response.code}"
-        
-        response
-      end
-    end
-
-    # Process a POST request to the specified URI with a JSON body
-    #
-    # @param uri [URI] The URI to send the request to
-    # @param body [Hash] The body to send as JSON
-    # @return [Net::HTTPResponse] The HTTP response
-    # @raise [Exception] If the request fails
-    def post_request(uri, body)
-      @logger.debug "POST Request URL: #{uri}"
-      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
-        request = Net::HTTP::Post.new(uri)
-        add_cookies(request)
-        request.content_type = "application/json"
-        request.body = body.to_json
-        http.request(request)
-      end
-    rescue => e
-      @logger.error "Exception raised during POST: #{e.message}"
-      @logger.debug "Backtrace:\n#{e.backtrace.join("\n")}"
-      raise
-    end
-
-    # Add session cookies to the HTTP request
-    #
-    # @param request [Net::HTTPRequest] The HTTP request to add cookies to
-    # @return [void]
-    def add_cookies(request)
-      cookies = @session.map { |key, value| "#{key}=#{value}" }.join("; ")
-      request["Cookie"] = cookies unless cookies.empty?
-    end
-
-    # Process the HTTP response, handling status codes, gzip compression and JSON parsing
-    #
-    # @param response [Net::HTTPResponse, Faraday::Response] The HTTP response to process
-    # @return [Hash] The parsed JSON response body
-    # @raise [AuthenticationError] If authentication fails (401, 403)
-    # @raise [NotFoundError] If resource not found (404)
-    # @raise [ValidationError] If validation fails (422)
-    # @raise [RateLimitError] If rate limited (429)
-    # @raise [APIError] For other client/server errors
-    # @raise [JSON::ParserError] If the response body is not valid JSON
-    def handle_response(response)
-      # Get status code (works for both Net::HTTPResponse and Faraday::Response)
-      status = response.respond_to?(:status) ? response.status : response.code.to_i
-      
-      # Check for error status codes first
-      case status
-      when 401, 403
-        raise AuthenticationError, "Authentication failed (HTTP #{status})"
-      when 404
-        raise NotFoundError.new(nil, status: status)
-      when 422
-        # Validation errors - need to parse body first
-        body = extract_response_body(response)
-        parsed_body = body.is_a?(Hash) ? body : (JSON.parse(body.to_s) rescue {})
-        errors = parsed_body['errors'] || []
-        raise ValidationError.new(nil, status: status, errors: errors)
-      when 429
-        raise RateLimitError.new("Rate limit exceeded", status: status)
-      when 400..499
-        raise APIError.new("Client error", status: status)
-      when 500..599
-        raise APIError.new("Server error", status: status)
-      end
-      
-      # Handle gzip compression for Net::HTTPResponse
-      if response.respond_to?(:[]) && response["content-encoding"] == "gzip"
-        begin
-          gz = Zlib::GzipReader.new(StringIO.new(response.body))
-          decompressed_body = gz.read
-          gz.close
-          response.define_singleton_method(:body) { decompressed_body }
-        rescue => e
-          @logger.error "Error decompressing gzip response: #{e.message}"
-          raise
-        end
-      end
-
-      # If response body is already a Hash or Array (parsed by Faraday middleware)
-      if response.body.is_a?(Hash) || response.body.is_a?(Array)
-        return response.body
-      end
-
-      begin
-        parsed_body = JSON.parse(response.body.to_s)
-      rescue JSON::ParserError => e
-        @logger.error "JSON Parsing Error: #{e.message}"
-        @logger.debug "Raw Response Body: #{response.body}"
-        raise
-      end
-
-      parsed_body
-    end
-    
-    # Extract response body, handling gzip if needed
-    # @param response [Net::HTTPResponse, Faraday::Response] The response
-    # @return [String, Hash, Array] The response body
-    def extract_response_body(response)
-      body = response.body
-      
-      # Handle gzip for Net::HTTPResponse during error extraction
-      if response.respond_to?(:[]) && response["content-encoding"] == "gzip" && body.is_a?(String)
-        begin
-          gz = Zlib::GzipReader.new(StringIO.new(body))
-          body = gz.read
-          gz.close
-        rescue
-          # If decompression fails, use original body
-        end
-      end
-      
-      body
     end
   end
 end

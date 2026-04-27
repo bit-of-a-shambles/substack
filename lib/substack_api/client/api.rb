@@ -181,19 +181,17 @@ module Substack
         raise Substack::Error, e
       end
 
-      # Get or create a Faraday connection with the current session
+      # Build a Faraday connection with the current session cookies
       #
       # @return [Faraday::Connection] The configured Faraday connection object
       def conn
-        @conn ||= Faraday.new do |f|
+        Faraday.new do |f|
           f.request :url_encoded
           f.response :json
           f.adapter Faraday.default_adapter
-          
-          # Set cookies from session
+
           if @session && @session['substack.sid']
             f.headers['Cookie'] = "substack.sid=#{@session['substack.sid']}"
-            f.headers['Cookie'] += "; csrf-token=#{@session['csrf-token']}" if @session['csrf-token']
           end
         end
       end
@@ -254,12 +252,4 @@ module Substack
       end
     end
   end
-
-  # Error classes
-  class Error < StandardError; end
-  class AuthenticationError < Error; end
-  class APIError < Error; end
-  class RateLimitError < APIError; end
-  class NotFoundError < APIError; end
-  class ValidationError < APIError; end
 end

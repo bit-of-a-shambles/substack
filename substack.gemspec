@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.description   = "This gem provides methods for Substack authentication, creating drafts, publishing posts, etc."
   spec.authors       = ["Duarte Martins"]
   spec.email         = ["duarteosrm@icloud.com"]
-  spec.homepage      = "https://github.com/duartemartins/substack_api"
+  spec.homepage      = "https://github.com/bit-of-a-shambles/substack"
   spec.required_ruby_version = ">= 2.7"
   spec.license = "Apache-2.0"
   spec.files         = Dir["lib/**/*.rb"] + Dir["README.md", "LICENSE"]
@@ -17,12 +17,9 @@ Gem::Specification.new do |spec|
 
   # Declare runtime dependencies here
   spec.add_dependency "selenium-webdriver", "~> 4.0"
-  spec.add_dependency "net-http", "~> 0.3"      
-  spec.add_dependency "json", "~> 2.0"          
-  spec.add_dependency "activesupport", "~> 6.1"
+  spec.add_dependency "json", "~> 2.0"
   spec.add_dependency "logger", "~> 1.5"
   spec.add_dependency "faraday", "~> 2.7"
-  spec.add_dependency "faraday-multipart", "~> 1.0"
 
   # Development dependencies (if needed)
   spec.add_development_dependency "rake", "~> 13.0"
